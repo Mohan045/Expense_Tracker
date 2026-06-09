@@ -1,59 +1,39 @@
-// ============================================================
-//  CLI Expense Tracker — Node.js Beginner Project
-//  Concepts used: variables, data types, loops, functions, fs
-// ============================================================
 
-const fs    = require("fs");          // Node.js built-in: File System module
-const chalk = require("chalk");       // npm package: adds colour to terminal text
-const path  = require("path");        // Node.js built-in: handles file paths
 
-// ── 1. VARIABLES & DATA TYPES ────────────────────────────────
-//  string  → FILE_PATH, category names
-//  number  → amounts, totals
-//  boolean → used inside validation functions
-//  array   → list of expenses loaded from disk
-//  object  → a single expense record { id, description, amount, category, date }
 
-const FILE_PATH = path.join(__dirname, "expenses.json"); // string — where we save data
+const fs    = require("fs");          
+const chalk = require("chalk");       
+const path  = require("path");    
 
-const VALID_CATEGORIES = ["food", "transport", "shopping", "health", "other"]; // array of strings
 
-// ── 2. FUNCTIONS ─────────────────────────────────────────────
+const FILE_PATH = path.join(__dirname, "expenses.json");
 
-// --- File helpers (fs module) ---
+const VALID_CATEGORIES = ["food", "transport", "shopping", "health", "other"]; 
 
-/** Read all expenses from the JSON file.
- *  Returns an ARRAY of expense objects.
- *  If the file doesn't exist yet, returns an empty array.
- */
 function loadExpenses() {
-  if (!fs.existsSync(FILE_PATH)) {   // fs.existsSync → check if file is present
-    return [];                        // return empty array on first run
+  if (!fs.existsSync(FILE_PATH)) {   
+    return [];                        
   }
-  const raw  = fs.readFileSync(FILE_PATH, "utf8");  // fs.readFileSync → read file as string
-  return JSON.parse(raw);                           // convert JSON string → JS array
+  const raw  = fs.readFileSync(FILE_PATH, "utf8");  
+  return JSON.parse(raw);                           
 }
 
-/** Save the current expenses array back to the JSON file. */
+
 function saveExpenses(expenses) {
-  const json = JSON.stringify(expenses, null, 2);  // convert JS array → formatted JSON string
-  fs.writeFileSync(FILE_PATH, json, "utf8");       // fs.writeFileSync → write string to file
+  const json = JSON.stringify(expenses, null, 2);  
+  fs.writeFileSync(FILE_PATH, json, "utf8");       
 }
 
-// --- Core feature functions ---
 
-/** ADD a new expense.
- *  Parameters: description (string), amount (number), category (string)
- */
 function addExpense(description, amount, category) {
 
-  // --- Validation using boolean checks ---
+ 
   if (!description || description.trim() === "") {
     console.log(chalk.red("X  Description cannot be empty."));
     return;
   }
 
-  const parsedAmount = parseFloat(amount);      // convert string input → number
+  const parsedAmount = parseFloat(amount);      
   if (isNaN(parsedAmount) || parsedAmount <= 0) {
     console.log(chalk.red("X  Amount must be a positive number."));
     return;
@@ -64,25 +44,24 @@ function addExpense(description, amount, category) {
     return;
   }
 
-  // --- Build an expense OBJECT ---
-  const expenses   = loadExpenses();             // array of existing expenses
-  const newExpense = {                           // object — one expense record
-    id         : expenses.length + 1,            // number
-    description: description.trim(),             // string
-    amount     : parsedAmount,                   // number
-    category   : category.toLowerCase(),         // string
-    date       : new Date().toLocaleDateString("en-IN")  // string
+    const expenses   = loadExpenses();            
+  const newExpense = {                           
+    id         : expenses.length + 1,            
+    description: description.trim(),             
+    amount     : parsedAmount,                  
+    category   : category.toLowerCase(),         
+    date       : new Date().toLocaleDateString("en-IN")  
   };
 
-  expenses.push(newExpense);   // add object to the array
-  saveExpenses(expenses);      // persist to file
+  expenses.push(newExpense);   
+  saveExpenses(expenses);      
 
   console.log(chalk.green(`Added: "${newExpense.description}" — Rs.${newExpense.amount} (${newExpense.category})`));
 }
 
-/** VIEW all expenses using a FOR loop. */
+
 function viewExpenses() {
-  const expenses = loadExpenses();  // array
+  const expenses = loadExpenses();  
 
   if (expenses.length === 0) {
     console.log(chalk.yellow("  No expenses recorded yet."));
@@ -92,9 +71,9 @@ function viewExpenses() {
   console.log(chalk.cyan("\n  ID  | Date       | Category    | Amount  | Description"));
   console.log(chalk.cyan("  ---------------------------------------------------------"));
 
-  // FOR loop — iterating over an array
+  
   for (let i = 0; i < expenses.length; i++) {
-    const e = expenses[i];  // each element is an object
+    const e = expenses[i];  
     const row =
       `  ${String(e.id).padStart(3)} | ${e.date.padEnd(10)} | ${e.category.padEnd(11)} | Rs.${String(e.amount).padEnd(6)} | ${e.description}`;
     console.log(row);
@@ -103,7 +82,7 @@ function viewExpenses() {
   console.log(chalk.cyan("  ---------------------------------------------------------\n"));
 }
 
-/** SUMMARY — total & per-category breakdown using forEach loop. */
+
 function showSummary() {
   const expenses = loadExpenses();
 
@@ -112,15 +91,12 @@ function showSummary() {
     return;
   }
 
-  let total = 0;  // number variable — accumulates the sum
-
-  // Object used as a "map": category → total amount
+  let total = 0;  
   const byCategory = {};
 
-  // forEach loop — another way to loop over arrays
+  
   expenses.forEach(function(expense) {
-    total += expense.amount;   // add each amount to total
-
+    total += expense.amount;   
     if (!byCategory[expense.category]) {
       byCategory[expense.category] = 0;
     }
@@ -131,14 +107,14 @@ function showSummary() {
   console.log(`  Total spent : Rs.${total.toFixed(2)}`);
   console.log(chalk.cyan("  By category:"));
 
-  // for...in loop — iterating over object keys
+  
   for (const cat in byCategory) {
     console.log(`    - ${cat.padEnd(12)}: Rs.${byCategory[cat].toFixed(2)}`);
   }
   console.log(chalk.cyan("  ─────────────────────────────────────────────\n"));
 }
 
-/** DELETE an expense by its ID. */
+
 function deleteExpense(id) {
   const parsedId = parseInt(id);
   if (isNaN(parsedId)) {
@@ -162,12 +138,12 @@ function deleteExpense(id) {
   console.log(chalk.green(`Deleted expense with ID ${parsedId}.`));
 }
 
-/** Show how to use the tool. */
+
 function showHelp() {
   console.log(chalk.cyan(`
-  =====================================================
+  
          CLI Expense Tracker -- Commands
-  =====================================================
+  
   node index.js add <desc> <amount> <category>
       Add a new expense
       Categories: food  transport  shopping  health  other
@@ -180,15 +156,11 @@ function showHelp() {
 
   node index.js delete <id>
       Delete an expense by its ID
-  =====================================================
+  
   `));
 }
 
-// ── 3. COMMAND-LINE ARGUMENT PARSING ─────────────────────────
-//  process.argv is an ARRAY provided by Node.js
-//  index 0 → "node"
-//  index 1 → path to this file
-//  index 2 → the command  (add / view / summary / delete)
+
 
 const args    = process.argv;   // array
 const command = args[2];        // string
