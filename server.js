@@ -1,194 +1,119 @@
-// ── Step 1: Load the tools we need ────────────────────────────────
+// Load the tools we need
 const http = require("http");
 const fs   = require("fs");
-const path = require("path");
 
-// ── Step 2: Basic settings ─────────────────────────────────────────
-const PORT      = 3000;
-const DATA_FILE = path.join(__dirname, "contacts.json");
-
-// ── Step 3: Helper — Read contacts from file ───────────────────────
-function readContacts() {
-  const text = fs.readFileSync(DATA_FILE, "utf8");
+// ── Read fruits from the file ──────────────────────────────────────
+function readFruits() {
+  const text = fs.readFileSync("fruits.json", "utf8");
   return JSON.parse(text);
 }
 
-// ── Step 4: Helper — Save contacts to file ─────────────────────────
-function saveContacts(contacts) {
-  const text = JSON.stringify(contacts, null, 2);
-  fs.writeFileSync(DATA_FILE, text);
+// ── Save fruits to the file ────────────────────────────────────────
+function saveFruits(fruits) {
+  fs.writeFileSync("fruits.json", JSON.stringify(fruits, null, 2));
 }
 
-// ── Step 5: Helper — Send a JSON response ─────────────────────────
-function sendJSON(res, statusCode, data) {
-  res.writeHead(statusCode, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(data));
-}
-
-// ── Step 6: Helper — Send a File (HTML, CSS, JS) ──────────────────
-function sendFile(res, filePath) {
-  // Check what type of file it is
-  const ext = path.extname(filePath);
-  const types = {
-    ".html": "text/html",
-    ".css":  "text/css",
-    ".js":   "application/javascript"
-  };
-
-  // Read the file and send it
-  fs.readFile(filePath, function(err, data) {
-    if (err) {
-      res.writeHead(404);
-      res.end("File not found");
-      return;
-    }
-    res.writeHead(200, { "Content-Type": types[ext] });
-    res.end(data);
-  });
-}
-
-// ── Step 7: Helper — Read request body (for POST and PUT) ─────────
-function readBody(req, callback) {
-  let body = "";
-  req.on("data", function(chunk) {
-    body += chunk;
-  });
-  req.on("end", function() {
-    const data = JSON.parse(body);
-    callback(data);
-  });
-}
-
-// ── Step 8: Create the server ──────────────────────────────────────
+// ── Create the server ──────────────────────────────────────────────
 const server = http.createServer(function(req, res) {
 
-  const method = req.method;       // GET, POST, PUT, DELETE
-  const url    = req.url;          // e.g. "/api/contacts" or "/api/contacts/1"
+  const method = req.method;
+  const url    = req.url;
 
-  // Allow browser to talk to server
-  res.setHeader("Access-Control-Allow-Origin",  "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  // Browser pre-check request — just say OK
-  if (method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
-    return;
+  // ── Serve the HTML page ──────────────────────────────────────────
+  if (url === "/") {
+    const page = fs.readFileSync("index.html", "utf8");
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end(page);
   }
 
-  // ── Route: Home page ────────────────────────────────────────────
-  if (method === "GET" && url === "/") {
-    sendFile(res, path.join(__dirname, "index.html"));
-    return;
+  // ── Serve the JS file ────────────────────────────────────────────
+  else if (url === "/script.js") {
+    const file = fs.readFileSync("script.js", "utf8");
+    res.writeHead(200, { "Content-Type": "application/javascript" });
+    res.end(file);
   }
 
-  // ── Route: CSS file ─────────────────────────────────────────────
-  if (method === "GET" && url === "/style.css") {
-    sendFile(res, path.join(__dirname, "style.css"));
-    return;
+  // ── GET: Send all fruits to the browser ──────────────────────────
+  else if (method === "GET" && url === "/fruits") {
+    const fruits = readFruits();
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(fruits));
   }
 
-  // ── Route: JS file ──────────────────────────────────────────────
-  if (method === "GET" && url === "/script.js") {
-    sendFile(res, path.join(__dirname, "script.js"));
-    return;
-  }
+  // ── POST: Add a new fruit ─────────────────────────────────────────
+  else if (method === "POST" && url === "/fruits") {
+    let body = "";
 
-  // ── Route: GET all contacts ──────────────────────────────────────
-  // URL: /api/contacts
-  if (method === "GET" && url === "/api/contacts") {
-    const contacts = readContacts();
-    sendJSON(res, 200, contacts);
-    return;
-  }
+    req.on("data", function(chunk) {
+      body = body + chunk;
+    });
 
-  // ── Route: POST — Add a new contact ─────────────────────────────
-  // URL: /api/contacts
-  if (method === "POST" && url === "/api/contacts") {
-    readBody(req, function(data) {
-      const contacts = readContacts();
+    req.on("end", function() {
+      const newFruit = JSON.parse(body);
+      const fruits   = readFruits();
 
-      // Create a new contact with a unique ID
-      const newContact = {
-        id:       contacts.length > 0 ? contacts[contacts.length - 1].id + 1 : 1,
-        name:     data.name,
-        phone:    data.phone,
-        email:    data.email,
-        category: data.category
-      };
+      // Give it a new ID
+      newFruit.id = fruits.length + 1;
 
       // Add to list and save
-      contacts.push(newContact);
-      saveContacts(contacts);
+      fruits.push(newFruit);
+      saveFruits(fruits);
 
-      sendJSON(res, 201, newContact);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(newFruit));
     });
-    return;
   }
 
-  // ── Route: PUT — Edit a contact ──────────────────────────────────
-  // URL: /api/contacts/1  (the number is the ID)
-  const editMatch = url.match(/^\/api\/contacts\/(\d+)$/);
-  if (method === "PUT" && editMatch) {
-    const id = parseInt(editMatch[1]);
+  // ── DELETE: Remove a fruit by ID ─────────────────────────────────
+  else if (method === "DELETE" && url.startsWith("/fruits/")) {
 
-    readBody(req, function(data) {
-      const contacts = readContacts();
+    // Get the ID from the URL  e.g. /fruits/3  →  3
+    const id     = parseInt(url.split("/")[2]);
+    const fruits = readFruits();
 
-      // Find the contact by ID
-      const index = contacts.findIndex(function(c) { return c.id === id; });
+    // Find and remove the fruit
+    const newList = fruits.filter(function(f) {
+      return f.id !== id;
+    });
 
-      if (index === -1) {
-        sendJSON(res, 404, { error: "Contact not found" });
-        return;
+    saveFruits(newList);
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ message: "Deleted" }));
+  }
+
+  // ── PUT: Edit a fruit by ID ───────────────────────────────────────
+  else if (method === "PUT" && url.startsWith("/fruits/")) {
+    const id   = parseInt(url.split("/")[2]);
+    let   body = "";
+
+    req.on("data", function(chunk) {
+      body = body + chunk;
+    });
+
+    req.on("end", function() {
+      const updated = JSON.parse(body);
+      const fruits  = readFruits();
+
+      // Find the fruit and update it
+      for (let i = 0; i < fruits.length; i++) {
+        if (fruits[i].id === id) {
+          fruits[i].name     = updated.name;
+          fruits[i].price    = updated.price;
+          fruits[i].quantity = updated.quantity;
+        }
       }
 
-      // Update the contact details
-      contacts[index].name     = data.name;
-      contacts[index].phone    = data.phone;
-      contacts[index].email    = data.email;
-      contacts[index].category = data.category;
+      saveFruits(fruits);
 
-      saveContacts(contacts);
-      sendJSON(res, 200, contacts[index]);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ message: "Updated" }));
     });
-    return;
   }
-
-  // ── Route: DELETE — Remove a contact ────────────────────────────
-  // URL: /api/contacts/1  (the number is the ID)
-  const deleteMatch = url.match(/^\/api\/contacts\/(\d+)$/);
-  if (method === "DELETE" && deleteMatch) {
-    const id       = parseInt(deleteMatch[1]);
-    const contacts = readContacts();
-
-    // Find the contact by ID
-    const index = contacts.findIndex(function(c) { return c.id === id; });
-
-    if (index === -1) {
-      sendJSON(res, 404, { error: "Contact not found" });
-      return;
-    }
-
-    // Remove the contact
-    const deleted = contacts.splice(index, 1)[0];
-    saveContacts(contacts);
-
-    sendJSON(res, 200, { message: "Contact deleted", contact: deleted });
-    return;
-  }
-
-  // ── Fallback: Route not found ────────────────────────────────────
-  res.writeHead(404);
-  res.end("Page not found");
 
 });
 
-// ── Step 9: Start the server ───────────────────────────────────────
-server.listen(PORT, function() {
-  console.log("──────────────────────────────────");
-  console.log("  ✅  Contact Book App is Running ");
-  console.log("  🌐  http://localhost:" + PORT     );
-  console.log("──────────────────────────────────");
+// ── Start the server ───────────────────────────────────────────────
+server.listen(3000, function() {
+  console.log("Server is running at http://localhost:3000");
 });

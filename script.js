@@ -1,192 +1,157 @@
-// ── Keep track of all contacts and edit state ──────────────────────
-var allContacts  = [];   // stores all contacts loaded from server
-var editingId    = null; // stores the ID of contact being edited (null = adding new)
+// This holds the ID of the fruit being edited
+// null means we are adding a new fruit
+var editId = null;
 
-// ── When page loads, fetch all contacts ────────────────────────────
+// ── When page loads, show all fruits ──────────────────────────────
 window.onload = function() {
-  loadContacts();
+  loadFruits();
 };
 
-// ── READ: Load all contacts from server ────────────────────────────
-function loadContacts() {
-  fetch("/api/contacts")
-    .then(function(res)  { return res.json(); })
-    .then(function(data) {
-      allContacts = data;
-      showContacts(allContacts);
-    })
-    .catch(function() {
-      document.getElementById("contacts-list").innerHTML =
-        "<p class='loading'>⚠️ Cannot connect. Run: node server.js</p>";
-    });
+// ── Load all fruits from the server ───────────────────────────────
+function loadFruits() {
+  fetch("/fruits")
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(fruits) {
+    showFruits(fruits);
+  });
 }
 
-// ── Show contacts on the page ──────────────────────────────────────
-function showContacts(contacts) {
-  var list = document.getElementById("contacts-list");
+// ── Show fruits in the table ───────────────────────────────────────
+function showFruits(fruits) {
+  var tbody = document.getElementById("fruit-table");
+  var rows  = "";
 
-  // If no contacts found
-  if (contacts.length === 0) {
-    list.innerHTML = "<p class='loading'>No contacts found.</p>";
+  for (var i = 0; i < fruits.length; i++) {
+    var f = fruits[i];
+    rows = rows +
+      "<tr>" +
+        "<td>" + f.id       + "</td>" +
+        "<td>" + f.name     + "</td>" +
+        "<td>" + f.price    + "</td>" +
+        "<td>" + f.quantity + "</td>" +
+        "<td><button onclick='editFruit(" + f.id + ")'>Edit</button></td>" +
+        "<td><button onclick='deleteFruit(" + f.id + ")'>Delete</button></td>" +
+      "</tr>";
+  }
+
+  tbody.innerHTML = rows;
+}
+
+// ── Save button — Add or Edit depending on editId ─────────────────
+function saveFruit() {
+  var name     = document.getElementById("name").value;
+  var price    = document.getElementById("price").value;
+  var quantity = document.getElementById("quantity").value;
+
+  // Check fields are not empty
+  if (name === "" || price === "" || quantity === "") {
+    document.getElementById("message").innerText = "Please fill all fields.";
     return;
   }
 
-  // Build a card for each contact
-  var html = "";
-  for (var i = 0; i < contacts.length; i++) {
-    var c          = contacts[i];
-    var firstLetter = c.name.charAt(0).toUpperCase();
+  var fruitData = {
+    name:     name,
+    price:    Number(price),
+    quantity: Number(quantity)
+  };
 
-    html += "<div class='contact-card' id='card-" + c.id + "'>";
-    html +=   "<div class='avatar avatar-" + c.category + "'>" + firstLetter + "</div>";
-    html +=   "<div class='contact-info'>";
-    html +=     "<div class='contact-name'>"  + c.name  + "</div>";
-    html +=     "<div class='contact-phone'>📞 " + c.phone + "</div>";
-    html +=     "<div class='contact-email'>✉️ " + c.email + "</div>";
-    html +=   "</div>";
-    html +=   "<span class='badge badge-" + c.category + "'>" + c.category + "</span>";
-    html +=   "<div class='card-buttons'>";
-    html +=     "<button class='btn-edit'   onclick='editContact(" + c.id + ")'>✏️ Edit</button>";
-    html +=     "<button class='btn-delete' onclick='deleteContact(" + c.id + ")'>🗑 Delete</button>";
-    html +=   "</div>";
-    html += "</div>";
-  }
+  // If editId is null → ADD. If editId has a number → EDIT
+  if (editId === null) {
 
-  list.innerHTML = html;
-}
-
-// ── CREATE / UPDATE: Save button clicked ───────────────────────────
-function saveContact() {
-  // Get values from form
-  var name     = document.getElementById("f-name").value.trim();
-  var phone    = document.getElementById("f-phone").value.trim();
-  var email    = document.getElementById("f-email").value.trim();
-  var category = document.getElementById("f-category").value;
-  var errorMsg = document.getElementById("error-msg");
-
-  // Simple validation
-  if (!name || !phone || !email || !category) {
-    errorMsg.textContent   = "⚠️ Please fill in all fields.";
-    errorMsg.style.display = "block";
-    return;
-  }
-  errorMsg.style.display = "none";
-
-  // Build the contact object to send
-  var contactData = { name: name, phone: phone, email: email, category: category };
-
-  // Decide: are we ADDING or EDITING?
-  if (editingId === null) {
-    // ── ADD: POST request ────────────────────────────────
-    fetch("/api/contacts", {
+    // ── ADD: send POST request to server ────────────────
+    fetch("/fruits", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(contactData)
+      body:    JSON.stringify(fruitData)
     })
-    .then(function(res)  { return res.json(); })
-    .then(function(data) {
-      showToast("✅ Contact added!");
+    .then(function(response) {
+      return response.json();
+    })
+    .then(function() {
+      document.getElementById("message").innerText = "Fruit added!";
       clearForm();
-      loadContacts();
+      loadFruits();
     });
 
   } else {
-    // ── EDIT: PUT request ────────────────────────────────
-    fetch("/api/contacts/" + editingId, {
+
+    // ── EDIT: send PUT request to server ─────────────────
+    fetch("/fruits/" + editId, {
       method:  "PUT",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(contactData)
+      body:    JSON.stringify(fruitData)
     })
-    .then(function(res)  { return res.json(); })
-    .then(function(data) {
-      showToast("✅ Contact updated!");
+    .then(function(response) {
+      return response.json();
+    })
+    .then(function() {
+      document.getElementById("message").innerText = "Fruit updated!";
       cancelEdit();
-      loadContacts();
+      loadFruits();
     });
+
   }
 }
 
-// ── UPDATE: Fill form with contact details for editing ─────────────
-function editContact(id) {
-  // Find the contact from our local list
-  var contact = null;
-  for (var i = 0; i < allContacts.length; i++) {
-    if (allContacts[i].id === id) {
-      contact = allContacts[i];
-      break;
+// ── Edit button clicked — fill the form with fruit details ────────
+function editFruit(id) {
+  // Fetch the latest fruits and find the one to edit
+  fetch("/fruits")
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(fruits) {
+    for (var i = 0; i < fruits.length; i++) {
+      if (fruits[i].id === id) {
+        // Fill the form
+        document.getElementById("name").value     = fruits[i].name;
+        document.getElementById("price").value    = fruits[i].price;
+        document.getElementById("quantity").value = fruits[i].quantity;
+      }
     }
-  }
+  });
 
-  if (!contact) return;
+  // Remember which fruit we are editing
+  editId = id;
 
-  // Fill the form with this contact's details
-  document.getElementById("f-name").value     = contact.name;
-  document.getElementById("f-phone").value    = contact.phone;
-  document.getElementById("f-email").value    = contact.email;
-  document.getElementById("f-category").value = contact.category;
-
-  // Switch form to "edit mode"
-  editingId = id;
-  document.getElementById("form-title").textContent  = "✏️ Edit Contact";
-  document.getElementById("btn-save").textContent    = "💾 Update Contact";
-  document.getElementById("btn-cancel").style.display = "block";
-
-  // Scroll to top so user sees the form
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  // Change the heading and show Cancel button
+  document.getElementById("form-heading").innerText        = "Edit Fruit";
+  document.getElementById("cancel-btn").style.display      = "inline";
+  document.getElementById("message").innerText             = "";
 }
 
-// ── Cancel editing — go back to Add mode ───────────────────────────
+// ── Cancel edit — go back to Add mode ─────────────────────────────
 function cancelEdit() {
-  editingId = null;
+  editId = null;
   clearForm();
-  document.getElementById("form-title").textContent   = "➕ Add New Contact";
-  document.getElementById("btn-save").textContent     = "💾 Save Contact";
-  document.getElementById("btn-cancel").style.display = "none";
+  document.getElementById("form-heading").innerText   = "Add Fruit";
+  document.getElementById("cancel-btn").style.display = "none";
+  document.getElementById("message").innerText        = "";
 }
 
-// ── DELETE: Remove a contact ───────────────────────────────────────
-function deleteContact(id) {
-  // Ask user to confirm first
-  var confirmed = confirm("Are you sure you want to delete this contact?");
-  if (!confirmed) return;
+// ── Delete button clicked — remove the fruit ──────────────────────
+function deleteFruit(id) {
+  var confirmed = confirm("Delete this fruit?");
 
-  fetch("/api/contacts/" + id, { method: "DELETE" })
-    .then(function(res)  { return res.json(); })
-    .then(function(data) {
-      showToast("🗑️ Contact deleted.");
-      loadContacts();
+  if (confirmed) {
+    fetch("/fruits/" + id, {
+      method: "DELETE"
+    })
+    .then(function(response) {
+      return response.json();
+    })
+    .then(function() {
+      document.getElementById("message").innerText = "Fruit deleted!";
+      loadFruits();
     });
-}
-
-// ── SEARCH: Filter contacts by name ───────────────────────────────
-function searchContacts() {
-  var query    = document.getElementById("search").value.toLowerCase();
-  var filtered = [];
-
-  for (var i = 0; i < allContacts.length; i++) {
-    if (allContacts[i].name.toLowerCase().includes(query)) {
-      filtered.push(allContacts[i]);
-    }
   }
-
-  showContacts(filtered);
 }
 
-// ── Helper: Clear the form fields ─────────────────────────────────
+// ── Clear the form inputs ──────────────────────────────────────────
 function clearForm() {
-  document.getElementById("f-name").value      = "";
-  document.getElementById("f-phone").value     = "";
-  document.getElementById("f-email").value     = "";
-  document.getElementById("f-category").value  = "";
-  document.getElementById("error-msg").style.display = "none";
-}
-
-// ── Helper: Show a toast notification ─────────────────────────────
-function showToast(message) {
-  var toast = document.getElementById("toast");
-  toast.textContent = message;
-  toast.classList.add("show");
-  setTimeout(function() {
-    toast.classList.remove("show");
-  }, 3000);
+  document.getElementById("name").value     = "";
+  document.getElementById("price").value    = "";
+  document.getElementById("quantity").value = "";
 }
