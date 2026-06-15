@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Employee Management</title>
+<style>
+body{font-family:Arial,sans-serif;margin:40px;background:#f4f6f9;}
+h1{color:#2c3e50;}
+table{border-collapse:collapse;}
+td,th{padding:10px;}
+input{width:250px;padding:8px;}
+.employee-table{margin-top:20px;}
+.employee-table th{background:#3498db;color:white;}
+.employee-table td,.employee-table th{border:1px solid #ddd;padding:10px;}
+button{padding:8px 15px;border:none;cursor:pointer;border-radius:5px;}
+.save-btn{background:#27ae60;color:white;}
+.cancel-btn{background:#e67e22;color:white;}
+.edit-btn{background:#3498db;color:white;}
+.delete-btn{background:#e74c3c;color:white;}
+</style>
+</head>
+<body>
+<h1>Employee Management System</h1>
+<h2 id="form-heading">Add Employee</h2>
+<table>
+<tr><td>Name</td><td><input type="text" id="name"></td></tr>
+<tr><td>Department</td><td><input type="text" id="department"></td></tr>
+<tr><td>Salary</td><td><input type="number" id="salary"></td></tr>
+</table><br>
+<button class="save-btn" onclick="saveEmployee()">Save</button>
+<button class="cancel-btn" id="cancel-btn" onclick="cancelEdit()" style="display:none">Cancel</button>
+<p id="message"></p><hr>
+<h2>Employee List</h2>
+<table class="employee-table">
+<tr><th>ID</th><th>Name</th><th>Department</th><th>Salary</th><th>Edit</th><th>Delete</th></tr>
+<tbody id="employee-table"></tbody>
+</table>
+<script src="/script.js"></script>
+</body></html>

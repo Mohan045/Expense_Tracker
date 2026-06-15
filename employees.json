@@ -1,0 +1,13 @@
+[
+  {
+    "id": 2,
+    "name": "Ravi",
+    "department": "DevOps",
+    "salary": 70000
+  },
+  {
+    "department": "PowerApps Developer",
+    "salary": 45000,
+    "id": 3
+  }
+]
